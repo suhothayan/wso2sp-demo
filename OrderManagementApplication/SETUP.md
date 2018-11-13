@@ -10,7 +10,42 @@ Steps
 
 ## Oder Management Application
 
-### Prerequisites
+### Accept Orders
+
+#### Setup
+
+Siddhi APP
+```sql
+@App:name("OrderManagement")
+@App:description("Managers Accepted Orders")
+
+@Source(type = 'http', receiver.url='http://localhost:8006/orders', basic.auth.enabled='false',
+    @map(type='json'))
+@sink(type='log') 
+define stream AcceptedOrders (id string, amount long, userId string);
+
+```
+#### Test
+
+Curl to test 
+
+```
+curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
+-d '{"event":{"id":"679","amount":1000,"userId":"1234"}}' -k
+
+```
+
+#### Test Output 
+
+Log output 
+```
+INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : AcceptedOrders : Event{timestamp=1542025271303, data=[679, 1000, 1234], isExpired=false}
+
+```
+
+### Enriching Orders With Shipment Information
+
+#### Prerequisites
 
 Add DB connection settings in deployment.yaml files, In this demo we are using H2 DB.
 
@@ -37,27 +72,30 @@ wso2.datasources:
         validationTimeout: 30000
         isAutoCommit: false
 ```
+ 
+#### Setup 
 
-Add email configuration to the deployment.yaml files, In this demo we are using a gmail account.
+Siddhi App
+```sql
+@App:name("OrderManagement")
+@App:description("Managers Accepted Orders")
 
-Add config for worker, editor, and dashboard.
+@Source(type = 'http', receiver.url='http://localhost:8006/orders', basic.auth.enabled='false',
+    @map(type='json'))
+define stream AcceptedOrders (id string, amount long, userId string);
 
-```
-siddhi:
-  refs:
-    -
-      ref:
-        name: 'email-sink'
-        type: 'email'
-        properties:
-          port: '465'
-          host: 'smtp.gmail.com'
-          ssl.enable: 'true'
-          auth: 'true'
-          ssl.enable: 'true'
-          address: 'wso2.stream.processor@gmail.com'
-          username: 'wso2.stream.processor'
-          password: '<password>'
+@store(type = 'rdbms', datasource = 'DEMO_DB')
+@primaryKey('id') 
+define table UserInfoTable (id string, userName string, location string, address string, email string);
+
+@sink(type='log') 
+define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@info(name='EnrichOdersWithUserInfo') 
+from AcceptedOrders as o join UserInfoTable as u 
+    on o.userId == u.id 
+select o.id as orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
+insert into AcceptedOrderInfoStream;
 ```
 
 Loading UserInfoTable with sample user information.
@@ -69,6 +107,8 @@ curl -X POST http://localhost:7370/stores/query -H "content-type: application/js
 curl -X POST http://localhost:7370/stores/query -H "content-type: application/json" -d '{"appName":"OrderManagement","query":"select \"1236\" as id, \"Mark\" as userName, \"London\" as location, \"283, Park Street, London, UK\" as address, \"mark@mail.com\" as email insert into UserInfoTable;"}' -k
 curl -X POST http://localhost:7370/stores/query -H "content-type: application/json" -d '{"appName":"OrderManagement","query":"select \"1237\" as id, \"Adam\" as userName, \"Berin\" as location, \"171, Mittelstraße, Berlin, Germany\" as address, \"adam@mail.com\" as email insert into UserInfoTable;"}' -k
 ```
+#### Test
+
 Curl to validate data in UserInfoTable
 
 ```
@@ -80,7 +120,23 @@ Expected output
 {"records":[["1234","John","London","23, Oxford Street, London, UK","john@mail.com"],["1235","Peter","Paris","11, Rue Cler, Paris, France","peter@mail.com"],["1236","Mark","London","283, Park Street, London, UK","mark@mail.com"],["1237","Adam","Berin","171, Mittelstraße, Berlin, Germany","adam@mail.com"]]}
 ```
 
-### Siddhi Apps
+Curl to invoke input message 
+
+```
+curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
+-d '{"event":{"id":"679","amount":1000,"userId":"1234"}}' -k
+
+```
+
+#### Test Output 
+Log output 
+```
+INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : AcceptedOrderInfoStream : Event{timestamp=1542025763274, data=[1689, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000], isExpired=false}
+```
+
+### Making Shipment
+
+#### Prerequisites
 
 Service to make the shipment. Using SiddhiApp as a service here, You can also use other HTTP service providers. 
 
@@ -106,7 +162,184 @@ group by orderId
 insert into ShipmentResponce;
 ```
 
-Siddhi App for OrderManagement
+#### Setup
+Siddhi APP
+
+```sql
+@App:name("OrderManagement")
+@App:description("Managers Accepted Orders")
+
+@Source(type = 'http', receiver.url='http://localhost:8006/orders', basic.auth.enabled='false',
+    @map(type='json'))
+define stream AcceptedOrders (id string, amount long, userId string);
+
+@primaryKey('id') 
+@store(type = 'rdbms', datasource = 'DEMO_DB')
+define table UserInfoTable (id string, userName string, location string, address string, email string);
+
+define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@sink( type='http-request', publisher.url='http://localhost:8080/shipment/', 
+        method='POST', headers="'Content-Type:application/json'", sink.id="shipment",
+        @map(type='json'))
+define stream ShipmentService (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@source(type='http-response', sink.id='shipment',
+    @map(type='json',
+        @attributes(orderId = 'trp:orderId', userId='trp:userId', userName='trp:userName', location='trp:location', address='trp:address',
+                    email='trp:email', amount='trp:amount', status= "$.event.status")))
+@sink(type='log') 
+define stream ShipmentServiceResponce (orderId string, userId string, userName string, location string, 
+                                       address string, email string, amount string, status string);
+
+@info(name='EnrichOdersWithUserInfo') 
+from AcceptedOrders as o join UserInfoTable as u 
+    on o.userId == u.id 
+select o.id as orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
+insert into AcceptedOrderInfoStream;
+
+@info(name='CallShipmentService') 
+from AcceptedOrderInfoStream
+select orderId, userId, userName, location, address, email, amount
+insert into ShipmentService;
+
+```
+
+#### Test
+
+Curl to test 
+
+```
+curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
+-d '{"event":{"id":"679","amount":1000,"userId":"1234"}}' -k
+
+```
+
+#### Test Output 
+Log output 
+
+```
+INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542028715210, data=[1689, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, delayed], isExpired=false}
+```
+
+
+### Retry Delayed Shipment
+
+#### Setup
+Siddhi APP
+
+```sql
+@App:name("OrderManagement")
+@App:description("Managers Accepted Orders")
+
+@Source(type = 'http', receiver.url='http://localhost:8006/orders', basic.auth.enabled='false',
+    @map(type='json'))
+define stream AcceptedOrders (id string, amount long, userId string);
+
+@primaryKey('id') 
+@store(type = 'rdbms', datasource = 'DEMO_DB')
+define table UserInfoTable (id string, userName string, location string, address string, email string);
+
+@sink( type='http-request', publisher.url='http://localhost:8080/shipment/', 
+        method='POST', headers="'Content-Type:application/json'", sink.id="shipment",
+        @map(type='json'))
+define stream ShipmentService (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@source(type='http-response', sink.id='shipment',
+    @map(type='json',
+        @attributes(orderId = 'trp:orderId', userId='trp:userId', userName='trp:userName', location='trp:location', address='trp:address',
+                    email='trp:email', amount='trp:amount', status= "$.event.status")))
+@sink(type='log') 
+define stream ShipmentServiceResponce (orderId string, userId string, userName string, location string, 
+                                       address string, email string, amount string, status string);
+
+@sink(type='inMemory' , topic='AcceptedOrderInfo') 
+define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@primaryKey('orderId') 
+@store(type = 'rdbms', datasource = 'DEMO_DB')
+define table ShipmentInfoTable (orderId string, userId string, location string, address string, amount long, status string);
+
+define trigger RetryTrigger at every 10 sec;
+
+@info(name='EnrichOdersWithUserInfo') 
+from AcceptedOrders as o join UserInfoTable as u 
+    on o.userId == u.id 
+select o.id as orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
+insert into AcceptedOrderInfoStream;
+
+@info(name='CallShipmentService') 
+from AcceptedOrderInfoStream
+select orderId, userId, userName, location, address, email, amount
+insert into ShipmentService;
+
+@info(name='AddResponseToTable') 
+from ShipmentServiceResponce 
+select orderId, userId, location, address, convert(amount, 'long') as amount, status
+update or insert into ShipmentInfoTable 
+    on orderId == ShipmentInfoTable.orderId; 
+
+@info(name='FetchDelayedOrders') 
+from RetryTrigger as t join ShipmentInfoTable as s 
+    on s.status == "delayed"
+select orderId, userId, location, address, amount
+insert into DelayedShipmentStream; 
+
+@info(name='EnrichDelayedOrders') 
+from DelayedShipmentStream as o join UserInfoTable as u 
+    on o.userId == u.id 
+select o.orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
+insert into ShipmentService;
+```
+
+#### Test
+Curl to test 
+
+```
+curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
+-d '{"event":{"id":"1679","amount":1000,"userId":"1234"}}' -k
+
+```
+
+#### Test Output 
+Log output 
+
+```
+[2018-11-12 14:05:30,401]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031530401, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, delayed], isExpired=false}
+[2018-11-12 14:05:31,822]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031531821, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, delayed], isExpired=false}
+[2018-11-12 14:05:41,824]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031541822, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, delayed], isExpired=false}
+[2018-11-12 14:05:51,823]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031551821, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, delayed], isExpired=false}
+[2018-11-12 14:06:01,819]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031561818, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, delayed], isExpired=false}
+[2018-11-12 14:06:11,822]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031571821, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, success], isExpired=false}
+```
+
+### Sending Notifications for Successful Shipment
+
+#### Prerequisites
+Add email configuration to the deployment.yaml files, In this demo we are using a gmail account.
+
+Add config for worker, editor, and dashboard.
+
+```
+siddhi:
+  refs:
+    -
+      ref:
+        name: 'email-sink'
+        type: 'email'
+        properties:
+          port: '465'
+          host: 'smtp.gmail.com'
+          ssl.enable: 'true'
+          auth: 'true'
+          ssl.enable: 'true'
+          address: 'wso2.stream.processor@gmail.com'
+          username: 'wso2.stream.processor'
+          password: '<password>'
+```
+
+#### Setup
+Siddhi APP
 
 ```sql
 @App:name("OrderManagement")
@@ -142,7 +375,7 @@ define table ShipmentInfoTable (orderId string, userId string, location string, 
 
 define trigger RetryTrigger at every 10 sec;
 
-@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='wso2streamprocessor@gmail.com}}', content.type='text/html',
+@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='wso2streamprocessor@gmail.com', content.type='text/html',
       @map(type='text', 
         @payload("""
 Hi {{userName}},<br/><br/> 
@@ -366,7 +599,7 @@ define table ShipmentInfoTable (orderId string, userId string, location string, 
 
 define trigger RetryTrigger at every 10 sec;
 
-@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='{{email}}', content.type='text/html',
+@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='wso2streamprocessor@gmail.com', content.type='text/html',
       @map(type='text', 
         @payload("""
 Hi {{userName}},<br/><br/> 
@@ -446,7 +679,7 @@ Siddhi App for custom notification
 @source(type='inMemory' , topic='Notification') 
 define stream NotificationStream (orderId string, userName string, location string, amount long, email string, address string, date string);
 
-@sink(ref='email-sink', subject='Shipment notification for order {{orderId}}', to='{{email}}', content.type='text/html',
+@sink(ref='email-sink', subject='Shipment notification for order {{orderId}}', to='wso2streamprocessor@gmail.com', content.type='text/html',
       @map(type='text', 
         @payload("""
 Hi,<br/><br/>

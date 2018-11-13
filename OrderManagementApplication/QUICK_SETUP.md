@@ -142,7 +142,7 @@ define table ShipmentInfoTable (orderId string, userId string, location string, 
 
 define trigger RetryTrigger at every 10 sec;
 
-@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='wso2streamprocessor@gmail.com}}', content.type='text/html',
+@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='wso2streamprocessor@gmail.com', content.type='text/html',
       @map(type='text', 
         @payload("""
 Hi {{userName}},<br/><br/> 

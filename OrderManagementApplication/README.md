@@ -2,13 +2,13 @@ Stream Processor Oder Management Demo
 =====================
 
 Steps
+
 1. [Oder Management Application](##Oder Management Application)
 2. [Delayed Shipment Notification Application](##Delayed Shipment Notification Application)
 3. [User Notification Management](#User Notification Management)
 4. [Visualise Orders Overtime](##Visualise Orders Overtime)
 
 ##Oder Management Application
-
 
 ### Accept Orders
 

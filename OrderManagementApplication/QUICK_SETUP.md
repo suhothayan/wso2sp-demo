@@ -280,7 +280,12 @@ insert into DelayedShipmentNotificationStream;
 
 Note: modify to email to your email to get the output
 
-Simulate single event to "AcceptedOrderInfoStream".
+Curl to test 
+```
+curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
+-d '{"event":{"id":"1679","amount":1000,"userId":"1234"}}' -k
+
+```
 
 #### Test Output 
 

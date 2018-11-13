@@ -1,0 +1,48 @@
+@App:name("DelayedShipmentNotification")
+@App:description("Notify delayed shipments")
+
+@source(type='inMemory' , topic='AcceptedOrderInfo') 
+define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@source(type='inMemory' , topic='Notification') 
+define stream NotificationStream (orderId string, userName string, location string, amount long, email string, address string, date string);
+
+@sink(ref='email-sink', subject='Shipment delayed for order {{orderId}}', to='wso2streamprocessor@gmail.com', content.type='text/html',
+      @map(type='text', 
+        @payload("""
+Hi {{userName}},<br/><br/>
+We regret to inform you that your order Id {{orderId}} of <b>{{amount}}</b> items<br/>
+has been delayed aproximatly by {{predictedDelay}} secs<br/><br/>
+For more information please contact sales.<br/><br/>
+Thank you""")))
+define stream DelayedShipmentNotificationStream (orderId string, userName string, location string, amount long, email string, predictedDelay long);
+
+
+@info(name='DetectDelay') 
+from every e1= AcceptedOrderInfoStream -> not NotificationStream [orderId ==e1.orderId ] for 30 sec
+select e1.orderId, e1.userName, e1.location, e1.amount, e1.email
+insert into DelayedShipmentPredictionStream; 
+
+--Train the ML model
+
+@info(name='GetCurrentTime') 
+from AcceptedOrderInfoStream
+select currentTimeMillis() as time, orderId, amount
+insert into AcceptedOrderInputStream;
+
+@info(name='DelayCalculation') 
+from every e1= AcceptedOrderInputStream -> e2= NotificationStream [orderId ==e1.orderId ]
+select (currentTimeMillis() - e1.time)/1000 as delay, e1.amount
+insert into DelayTrainingStream;
+
+@info(name = 'TrainDelay')
+from DelayTrainingStream#streamingml:updateAMRulesRegressor('model1', amount, delay)
+select meanSquaredError
+insert into TrainingOutputStream;
+
+--Predict using ML model
+
+@info(name = 'PredictDelay')
+from DelayedShipmentPredictionStream#streamingml:AMRulesRegressor('model1', amount)
+select orderId, userName, location, amount, email, convert(prediction, 'long') as predictedDelay
+insert into DelayedShipmentNotificationStream;

@@ -1,0 +1,17 @@
+@App:name("ShipmentService")
+@App:description("Description of the plan")
+
+@source(type='http-request', source.id='shipment', receiver.url='http://localhost:8080/shipment/', 
+    @map(type='json', @attributes(messageId='trp:messageId', orderId='$.event.orderId')))
+define stream ShipmentService (messageId string, orderId string);
+
+@sink(type='http-response', source.id='shipment', message.id='{{messageId}}', headers="'content-type:json','content-length:94'", 
+    @map(type='json', @payload(""" { "event": { "status":"{{status}}"} } """)))
+--@sink(type='log') 
+define stream ShipmentResponce (status String, messageId string);
+
+@info(name='ProcessShipment') 
+from ShipmentService
+select ifThenElse(convert(orderId, 'long')  > 1000, ifThenElse(count() > 5, "success", "delayed"), ifThenElse(math:round(math:rand()) ==0, "delayed", "success" )) as status, messageId
+group by orderId
+insert into ShipmentResponce;

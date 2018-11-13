@@ -1,0 +1,12 @@
+@App:name("OrderAnalytics")
+@App:description("Analyse orders Overtime")
+
+@source(type='inMemory' , topic='AcceptedOrderInfo') 
+define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
+
+@store(type = 'rdbms', datasource = 'DEMO_DB')
+define aggregation OrderAggregation
+from AcceptedOrderInfoStream
+select userId, userName, location, count() as orders, sum(amount) as itemsOrdered
+    group by userId, location
+    aggregate every sec ... year;

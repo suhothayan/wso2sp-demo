@@ -301,13 +301,14 @@ For more information please contact sales.
 Thank you
 ```
 
-##User Notification Management 
+## User Notification Management 
 
-###Custom Shipment Notification 
+### Custom Shipment Notification 
 
 #### Setup
  
 Siddhi App for custom notification
+
 ```sql
 @App:name("NotificationApp")
 @App:description("Notification management for users")
@@ -328,6 +329,7 @@ define stream FilteredEmailStream (orderId string, userName string, location str
 from NotificationStream[location == '${location}' and amount > ${amount} ] 
 select orderId, userName, location, amount, '${email}' as email, date 
 insert into FilteredEmailStream ;
+
 ```
 
 Add OrderNotificationManagement.json to the dashboard resources
@@ -339,6 +341,7 @@ Fill the values in the business rules dashboard
 with amount 1000, location London and with your email id.
 
 #### Test Output 
+
 TBA
 
 ## Order Analytics

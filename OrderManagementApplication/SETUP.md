@@ -637,9 +637,9 @@ For more information please contact sales.
 Thank you
 ```
 
-##User Notification Management 
+## User Notification Management 
 
-###Custom Shipment Notification 
+### Custom Shipment Notification 
 
 #### Setup
  
@@ -667,7 +667,6 @@ insert into FilteredEmailStream ;
 ```
 
 Add OrderNotificationManagement.json to the dashboard resources
-
 
 #### Test
 

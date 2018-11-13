@@ -1,0 +1,47 @@
+{
+   "templateGroup": {
+      "uuid": "OrderNotificationManagement",
+      "name": "Order Notification Management ",
+      "description": "Allow users to add custom notifications ",
+      "ruleTemplates": [
+         {
+            "uuid": "OrderShipmentNotification",
+            "name": "Order Shipment Notification Management",
+            "description": "Allow users to add custom alerts for shipment notification",
+            "type": "template",
+            "instanceCount": "many",
+            "script": "var amount = myFunction1('${userInputForamount}');\n\n/**\n* Does some magic on given variable\n* @returns Processed input\n* @param input User given value\n*/\nfunction myFunction1(input) {\n   if(input < 0) {\n      throw \"Amount cannot be less then zero!\";\n   } else {\n\t   return input;\n   }\n}\n\n\n\n\nvar email = myFunction2('${userInputForemail}');\n\n/**\n* Does some magic on given variable\n* @returns Processed input\n* @param input User given value\n*/\nfunction myFunction2(input) {\n   \n   if(input.indexOf(\"@\") < input.lastIndexOf(\".\")){\n      return input;\n   } else {\n\t   throw \"Email ID \"+input+\" is not on the correct format!\";\n   }\n}\n\n\n\n\n",
+            "templates": [
+               {
+                  "type": "siddhiApp",
+                  "content": "@App:name(\"NotificationApp\")\n@App:description(\"Notification management for users\")\n\n@source(type='inMemory' , topic='Notification') \ndefine stream NotificationStream (orderId string, userName string, location string, amount long, email string, address string, date string);\n\n@sink(ref='email-sink', subject='Shipment notification for order {{orderId}}', to='wso2streamprocessor@gmail.com', content.type='text/html',\n      @map(type='text', \n        @payload(\"\"\"\nHi,<br/><br/>\nOrder of <b>{{userName}}</b> with order Id {{orderId}} having <b>{{amount}}</b> items has been shipped to <br/><b>{{location}}</b> on {{date}}.<br/>\nFor more information please contact sales.<br/><br/>\nThank you\"\"\")))\n@sink(type='log') \ndefine stream FilteredEmailStream (orderId string, userName string, location string, amount long, email string, date string);\n\nfrom NotificationStream[location == '${location}' and amount > ${amount} ] \nselect orderId, userName, location, amount, '${email}' as email, date \ninsert into FilteredEmailStream ;\n"
+               }
+            ],
+            "properties": {
+               "location": {
+                  "fieldName": "Shipment Location",
+                  "description": "Location of the shipment",
+                  "defaultValue": "London",
+                  "options": [
+                     "London",
+                     "Paris",
+                     "Berlin",
+                     "New York",
+                     "San Francisco"
+                  ]
+               },
+               "userInputForamount": {
+                  "fieldName": "Amount",
+                  "description": "Amount of items shiped",
+                  "defaultValue": "1000"
+               },
+               "userInputForemail": {
+                  "fieldName": "Email ID",
+                  "description": "Email ID to send the notification ",
+                  "defaultValue": "user@example.com"
+               }
+            }
+         }
+      ]
+   }
+}

@@ -1,11 +1,14 @@
 Stream Processor Demo
 =====================
 
-##Oder Management Application
-Steps
-###Accept Orders
+## Oder Management Application
 
-####Setup
+Steps
+
+### Accept Orders
+
+#### Setup
+
 Siddhi APP
 ```sql
 @App:name("OrderManagement")
@@ -17,7 +20,8 @@ Siddhi APP
 define stream AcceptedOrders (id string, amount long, userId string);
 
 ```
-####Test
+#### Test
+
 Curl to test 
 
 ```
@@ -26,16 +30,18 @@ curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
 
 ```
 
-####Test Output 
+#### Test Output 
+
 Log output 
 ```
 INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : AcceptedOrders : Event{timestamp=1542025271303, data=[679, 1000, 1234], isExpired=false}
 
 ```
 
-###Enriching Orders With Shipment Information
+### Enriching Orders With Shipment Information
 
-####Prerequisites
+#### Prerequisites
+
 Add DB connection settings in deployment.yaml files, In this demo we are using H2 DB.
 
 Add configs under `wso2.datasources: dataSources` for worker, editor, and dashboard.
@@ -62,7 +68,7 @@ wso2.datasources:
         isAutoCommit: false
 ```
  
-####Setup 
+#### Setup 
 
 Siddhi App
 ```sql
@@ -96,7 +102,7 @@ curl -X POST http://localhost:7370/stores/query -H "content-type: application/js
 curl -X POST http://localhost:7370/stores/query -H "content-type: application/json" -d '{"appName":"OrderManagement","query":"select \"1236\" as id, \"Mark\" as userName, \"London\" as location, \"283, Park Street, London, UK\" as address, \"mark@mail.com\" as email insert into UserInfoTable;"}' -k
 curl -X POST http://localhost:7370/stores/query -H "content-type: application/json" -d '{"appName":"OrderManagement","query":"select \"1237\" as id, \"Adam\" as userName, \"Berin\" as location, \"171, Mittelstraße, Berlin, Germany\" as address, \"adam@mail.com\" as email insert into UserInfoTable;"}' -k
 ```
-####Test
+#### Test
 
 Curl to validate data in UserInfoTable
 
@@ -117,16 +123,17 @@ curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
 
 ```
 
-####Test Output 
+#### Test Output 
 Log output 
 ```
 INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : AcceptedOrderInfoStream : Event{timestamp=1542025763274, data=[1689, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000], isExpired=false}
 ```
 
-###Making Shipment
+### Making Shipment
 
-####Prerequisites
-Serivce to make the shipment. Using SiddhiApp as a service here, You can also use other HTTP service providers. 
+#### Prerequisites
+
+Service to make the shipment. Using SiddhiApp as a service here, You can also use other HTTP service providers. 
 
 Siddhi App for ShipmentService
 
@@ -150,7 +157,7 @@ group by orderId
 insert into ShipmentResponce;
 ```
 
-####Setup
+#### Setup
 Siddhi APP
 
 ```sql
@@ -193,7 +200,8 @@ insert into ShipmentService;
 
 ```
 
-####Test
+#### Test
+
 Curl to test 
 
 ```
@@ -202,7 +210,7 @@ curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
 
 ```
 
-####Test Output 
+#### Test Output 
 Log output 
 
 ```
@@ -210,9 +218,9 @@ INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : Shipm
 ```
 
 
-###Retry Delayed Shipment
+### Retry Delayed Shipment
 
-####Setup
+#### Setup
 Siddhi APP
 
 ```sql
@@ -279,7 +287,7 @@ select o.orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
 insert into ShipmentService;
 ```
 
-####Test
+#### Test
 Curl to test 
 
 ```
@@ -288,7 +296,7 @@ curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
 
 ```
 
-####Test Output 
+#### Test Output 
 Log output 
 
 ```
@@ -300,9 +308,9 @@ Log output
 [2018-11-12 14:06:11,822]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - OrderManagement : ShipmentServiceResponce : Event{timestamp=1542031571821, data=[1679, 1234, John, London, 23, Oxford Street, London, UK, john@mail.com, 1000, success], isExpired=false}
 ```
 
-###Sending Notifications for Successful Shipment
+### Sending Notifications for Successful Shipment
 
-####Prerequisites
+#### Prerequisites
 Add email configuration to the deployment.yaml files, In this demo we are using a gmail account.
 
 Add config for worker, editor, and dashboard.
@@ -325,7 +333,7 @@ siddhi:
           password: '<password>'
 ```
 
-####Setup
+#### Setup
 Siddhi APP
 
 ```sql
@@ -408,7 +416,7 @@ select orderId, userName, location, convert(amount, 'long') as amount, email, ad
 insert into NotificationStream; 
 ```
 
-####Test
+#### Test
 
 Note: modify to email to your email to get the output
 
@@ -420,7 +428,7 @@ curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
 
 ```
 
-####Test Output 
+#### Test Output 
 Log output 
 
 ```
@@ -440,14 +448,16 @@ For more information please contact sales.
 Thank you
 ```
 
-##Delayed Shipment Notification Application 
+## Delayed Shipment Notification Application 
 
-###Identifying Delay 
+### Identifying Delay 
 
-####Prerequisites
+#### Prerequisites
+
 Expose "AcceptedOrderInfoStream" and "NotificationStream" of OrderManagement app via in-memory topics 
 
-####Setup
+#### Setup
+
 Siddhi APP
 
 ```sql
@@ -469,10 +479,12 @@ select e1.orderId, e1.userName, e1.location, e1.amount, e1.email
 insert into DelayedShipmentPredictionStream; 
 ```
 
-####Test
+#### Test
+
 Simulate single event to "AcceptedOrderInfoStream".
 
-####Test Output 
+#### Test Output 
+
 Log output 
 
 ```
@@ -481,7 +493,8 @@ Log output
 
 ###Delay Prediction & Online Training 
 
-####Setup
+#### Setup
+
 Siddhi APP
 
 ```sql
@@ -529,19 +542,22 @@ insert into DelayedShipmentNotificationStream;
 
 Feed simulate data train the model using "train.csv" by sending events to "DelayTrainingStream"
 
-####Test
+#### Test
+
 Simulate single event to "AcceptedOrderInfoStream".
 
-####Test Output 
+#### Test Output 
+
 Log output 
 
 ```
 [2018-11-12 17:48:40,702]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - DelayedShipmentNotification : DelayedShipmentNotificationStream : Event{timestamp=1542044920698, data=[678, John, London, 1000, john@gmail.con, 206], isExpired=false}
 ```
 
-###Sending Notifications for Delayed Shipment
+### Sending Notifications for Delayed Shipment
 
-####Setup
+#### Setup
+
 Siddhi APP
 
 ```sql
@@ -624,12 +640,13 @@ select orderId, userName, location, convert(amount, 'long') as amount, email, ad
 insert into NotificationStream; 
 ```
 
-####Test
+#### Test
+
 Note: modify to email to your email to get the output
 
 Simulate single event to "AcceptedOrderInfoStream".
 
-####Test Output 
+#### Test Output 
 
 Email output
 ```
@@ -647,7 +664,7 @@ Thank you
 
 ###Custom Shipment Notification 
 
-####Setup
+#### Setup
  
 Siddhi App for custom notification
 ```sql
@@ -675,19 +692,20 @@ insert into FilteredEmailStream ;
 Add OrderNotificationManagement.json to the dashboard resources
 
 
-####Test
+#### Test
 
 Fill the values in the business rules dashboard 
 with amount 1000, location London and with your email id.
 
-####Test Output 
+#### Test Output 
 TBA
 
-##Order Analytics
+## Order Analytics
 
-###Order Analysis Overtime
+### Order Analysis Overtime
 
-####Setup
+#### Setup
+
 Siddhi APP
 
 ```sql
@@ -705,11 +723,11 @@ select userId, userName, location, count() as orders, sum(amount) as itemsOrdere
     aggregate every sec ... year;
 ```
 
-####Test
+#### Test
 
 Simulate some events to "AcceptedOrderInfoStream".
 
-####Test Output 
+#### Test Output 
 
 Curl to retrieve the data 
 
@@ -724,9 +742,9 @@ Output
 [1541954400000,"1234","John","London",2,2000],[1541954520000,"1234","John","London",1,1000],[1542022320000,"1234","John","London",1,1000],[1542022380000,"1234","John","London",1,1000],[1542022800000,"1234","John","London",1,1000]]}
 ```
 
-###Visualise Order By Location
+### Visualise Order By Location
 
-###Setup
+### Setup
 
 Name : Order By Location
 Provider : Siddhi Store Data Provider
@@ -746,9 +764,9 @@ return "from ShipmentInfoTable "+
 
 Generate Bar Chart
 
-###Visualise Order Status Percentage
+### Visualise Order Status Percentage
 
-###Setup
+### Setup
 
 Name : Order Status Percentage
 Provider : Siddhi Store Data Provider
@@ -768,7 +786,7 @@ return "from ShipmentInfoTable "+
 
 Generate Pie Chart
 
-##Visualise Orders Overtime
+## Visualise Orders Overtime
 Add following custom charts and build the dashboard with time picker 
 * Orders Overtime  
 * Items Ordered Overtime

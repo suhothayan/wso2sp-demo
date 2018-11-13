@@ -222,115 +222,7 @@ Thank you
 
 ## Delayed Shipment Notification Application 
 
-### Identifying Delay 
-
-#### Prerequisites
-
-Expose "AcceptedOrderInfoStream" and "NotificationStream" of OrderManagement app via in-memory topics 
-
-#### Setup
-
-Siddhi APP
-
-```sql
-@App:name("DelayedShipmentNotification")
-@App:description("Notify delayed shipments")
-
-@source(type='inMemory' , topic='AcceptedOrderInfo') 
-define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
-
-@source(type='inMemory' , topic='Notification') 
-define stream NotificationStream (orderId string, userName string, location string, amount long, email string, address string, date string);
-
-@sink(type='log') 
-define stream DelayedShipmentPredictionStream (orderId string, userName string, location string, amount long, email string);
-
-@info(name='DetectDelay') 
-from every e1= AcceptedOrderInfoStream -> not NotificationStream [orderId ==e1.orderId ] for 30 sec
-select e1.orderId, e1.userName, e1.location, e1.amount, e1.email
-insert into DelayedShipmentPredictionStream; 
-```
-
-#### Test
-
-Simulate single event to "AcceptedOrderInfoStream".
-
-#### Test Output 
-
-Log output 
-
-```
-[2018-11-12 17:21:55,201]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - DelayedShipmentNotification : DelayedShipmentPredictionStream : Event{timestamp=1542043315201, data=[678, John, London, 1000, john@gmail.com], isExpired=false}
-```
-
-###Delay Prediction & Online Training 
-
-#### Setup
-
-Siddhi APP
-
-```sql
-@App:name("DelayedShipmentNotification")
-@App:description("Notify delayed shipments")
-
-@source(type='inMemory' , topic='AcceptedOrderInfo') 
-define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
-
-@source(type='inMemory' , topic='Notification') 
-define stream NotificationStream (orderId string, userName string, location string, amount long, email string, address string, date string);
-
-@sink(type='log') 
-define stream DelayedShipmentNotificationStream (orderId string, userName string, location string, amount long, email string, predictedDelay long);
-
-@info(name='DetectDelay') 
-from every e1= AcceptedOrderInfoStream -> not NotificationStream [orderId ==e1.orderId ] for 30 sec
-select e1.orderId, e1.userName, e1.location, e1.amount, e1.email
-insert into DelayedShipmentPredictionStream; 
-
---Train the ML model
-
-@info(name='GetCurrentTime') 
-from AcceptedOrderInfoStream
-select currentTimeMillis() as time, orderId, amount
-insert into AcceptedOrderInputStream;
-
-@info(name='DelayCalculation') 
-from every e1= AcceptedOrderInputStream -> e2= NotificationStream [orderId ==e1.orderId ]
-select (currentTimeMillis() - e1.time)/1000 as delay, e1.amount
-insert into DelayTrainingStream;
-
-@info(name = 'TrainDelay')
-from DelayTrainingStream#streamingml:updateAMRulesRegressor('model1', amount, delay)
-select meanSquaredError
-insert into TrainingOutputStream;
-
---Predict using ML model
-
-@info(name = 'PredictDelay')
-from DelayedShipmentPredictionStream#streamingml:AMRulesRegressor('model1', amount)
-select orderId, userName, location, amount, email, convert(prediction, 'long') as predictedDelay
-insert into DelayedShipmentNotificationStream;
-```
-
-Feed simulate data train the model using "train.csv" by sending events to "DelayTrainingStream"
-
-#### Test
-
-Simulate single event to "AcceptedOrderInfoStream".
-
-#### Test Output 
-
-Log output 
-
-```
-[2018-11-12 17:48:40,702]  INFO {org.wso2.siddhi.core.stream.output.sink.LogSink} - DelayedShipmentNotification : DelayedShipmentNotificationStream : Event{timestamp=1542044920698, data=[678, John, London, 1000, john@gmail.con, 206], isExpired=false}
-```
-
-### Sending Notifications for Delayed Shipment
-
-#### Setup
-
-Siddhi APP
+### Siddhi App
 
 ```sql
 @App:name("OrderManagement")
@@ -412,12 +304,21 @@ select orderId, userName, location, convert(amount, 'long') as amount, email, ad
 insert into NotificationStream; 
 ```
 
+
+Feed simulate data train the model using "train.csv" by sending events to "DelayTrainingStream"
+
+
 #### Test
 
 Note: modify to email to your email to get the output
 
-Simulate single event to "AcceptedOrderInfoStream".
+Curl to test 
 
+```
+curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
+-d '{"event":{"id":"1679","amount":1000,"userId":"1234"}}' -k
+
+```
 #### Test Output 
 
 Email output

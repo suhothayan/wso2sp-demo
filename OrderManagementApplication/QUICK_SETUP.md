@@ -225,100 +225,63 @@ Thank you
 ### Siddhi App
 
 ```sql
-@App:name("OrderManagement")
-@App:description("Managers Accepted Orders")
+@App:name("DelayedShipmentNotification")
+@App:description("Notify delayed shipments")
 
-@Source(type = 'http', receiver.url='http://localhost:8006/orders', basic.auth.enabled='false',
-    @map(type='json'))
-define stream AcceptedOrders (id string, amount long, userId string);
-
-@primaryKey('id') 
-@store(type = 'rdbms', datasource = 'DEMO_DB')
-define table UserInfoTable (id string, userName string, location string, address string, email string);
-
-@sink(type='inMemory' , topic='AcceptedOrderInfo') 
+@source(type='inMemory' , topic='AcceptedOrderInfo') 
 define stream AcceptedOrderInfoStream (orderId string, userId string, userName string, location string, address string, email string, amount long);
 
-@sink( type='http-request', publisher.url='http://localhost:8080/shipment/', 
-        method='POST', headers="'Content-Type:application/json'", sink.id="shipment",
-        @map(type='json'))
-define stream ShipmentService (orderId string, userId string, userName string, location string, address string, email string, amount long);
-
-@source(type='http-response', sink.id='shipment',
-    @map(type='json',
-        @attributes(orderId = 'trp:orderId', userId='trp:userId', userName='trp:userName', location='trp:location', address='trp:address',
-                    email='trp:email', amount='trp:amount', status= "$.event.status")))
-@sink(type='log') 
-define stream ShipmentServiceResponce (orderId string, userId string, userName string, location string, 
-                                       address string, email string, amount string, status string);
-
-@primaryKey('orderId') 
-@store(type = 'rdbms', datasource = 'DEMO_DB')
-define table ShipmentInfoTable (orderId string, userId string, location string, address string, amount long, status string);
-
-define trigger RetryTrigger at every 10 sec;
-
-@sink(ref='email-sink', subject='Order {{orderId}} shipped', to='wso2streamprocessor@gmail.com', content.type='text/html',
-      @map(type='text', 
-        @payload("""
-Hi {{userName}},<br/><br/> 
-Your order Id {{orderId}} having <b>{{amount}}</b> items has been shipped to <br/><b>{{address}}</b> <br/>
-on {{date}}. <br/><br/>
-For more information please contact sales. <br/><br/>
-Thank you""")))
-@sink(type='inMemory' , topic='Notification') 
+@source(type='inMemory' , topic='Notification') 
 define stream NotificationStream (orderId string, userName string, location string, amount long, email string, address string, date string);
 
-@info(name='EnrichOdersWithUserInfo') 
-from AcceptedOrders as o join UserInfoTable as u 
-    on o.userId == u.id 
-select o.id as orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
-insert into AcceptedOrderInfoStream;
+@sink(ref='email-sink', subject='Shipment delayed for order {{orderId}}', to='wso2streamprocessor@gmail.com', content.type='text/html',
+      @map(type='text', 
+        @payload("""
+Hi {{userName}},<br/><br/>
+We regret to inform you that your order Id {{orderId}} of <b>{{amount}}</b> items<br/>
+has been delayed aproximatly by {{predictedDelay}} secs<br/><br/>
+For more information please contact sales.<br/><br/>
+Thank you""")))
+define stream DelayedShipmentNotificationStream (orderId string, userName string, location string, amount long, email string, predictedDelay long);
 
-@info(name='CallShipmentService') 
+
+@info(name='DetectDelay') 
+from every e1= AcceptedOrderInfoStream -> not NotificationStream [orderId ==e1.orderId ] for 30 sec
+select e1.orderId, e1.userName, e1.location, e1.amount, e1.email
+insert into DelayedShipmentPredictionStream; 
+
+--Train the ML model
+
+@info(name='GetCurrentTime') 
 from AcceptedOrderInfoStream
-select orderId, userId, userName, location, address, email, amount
-insert into ShipmentService;
+select currentTimeMillis() as time, orderId, amount
+insert into AcceptedOrderInputStream;
 
-@info(name='AddResponseToTable') 
-from ShipmentServiceResponce 
-select orderId, userId, location, address, convert(amount, 'long') as amount, status
-update or insert into ShipmentInfoTable 
-    on orderId == ShipmentInfoTable.orderId; 
+@info(name='DelayCalculation') 
+from every e1= AcceptedOrderInputStream -> e2= NotificationStream [orderId ==e1.orderId ]
+select (currentTimeMillis() - e1.time)/1000 as delay, e1.amount
+insert into DelayTrainingStream;
 
-@info(name='FetchDelayedOrders') 
-from RetryTrigger as t join ShipmentInfoTable as s 
-    on s.status == "delayed"
-select orderId, userId, location, address, amount
-insert into DelayedShipmentStream; 
+@info(name = 'TrainDelay')
+from DelayTrainingStream#streamingml:updateAMRulesRegressor('model1', amount, delay)
+select meanSquaredError
+insert into TrainingOutputStream;
 
-@info(name='EnrichDelayedOrders') 
-from DelayedShipmentStream as o join UserInfoTable as u 
-    on o.userId == u.id 
-select o.orderId, o.userId, u.userName, u.location, u.address, u.email, o.amount
-insert into ShipmentService;
+--Predict using ML model
 
-@info(name='NotifySuccessResponse') 
-from ShipmentServiceResponce[status == "success"]
-select orderId, userName, location, convert(amount, 'long') as amount, email, address, time:currentDate() as date
-insert into NotificationStream; 
+@info(name = 'PredictDelay')
+from DelayedShipmentPredictionStream#streamingml:AMRulesRegressor('model1', amount)
+select orderId, userName, location, amount, email, convert(prediction, 'long') as predictedDelay
+insert into DelayedShipmentNotificationStream;
+
 ```
-
-
-Feed simulate data train the model using "train.csv" by sending events to "DelayTrainingStream"
-
 
 #### Test
 
 Note: modify to email to your email to get the output
 
-Curl to test 
+Simulate single event to "AcceptedOrderInfoStream".
 
-```
-curl -X POST http://localhost:8006/orders -H "content-type: application/json" \
--d '{"event":{"id":"1679","amount":1000,"userId":"1234"}}' -k
-
-```
 #### Test Output 
 
 Email output

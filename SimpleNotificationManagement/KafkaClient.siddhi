@@ -1,0 +1,9 @@
+@App:name("KafkaClient")
+@App:description("Kafka client to send avro messages")
+
+@sink(type = 'kafka',
+	topic = 'shipment-info',
+	bootstrap.servers = 'localhost:9092',
+	is.binary.message = 'true',
+	@map(type = 'avro'))
+define stream ShipmentInfoStream (orderId string, buyerId string, shipmentType string);

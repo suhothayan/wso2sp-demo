@@ -1,0 +1,37 @@
+# Datasource Configurations
+wso2.datasources:
+  dataSources:
+
+  - name: WSO2_TEST_DB
+    description: The datasource used for test database
+    jndiConfig:
+      name: jdbc/WSO2_TEST_DB
+    definition:
+      type: RDBMS
+      configuration:
+        jdbcUrl: jdbc:mysql://localhost:3306/testdb?useSSL=false
+        username: root
+        password: <password>
+        driverClassName: com.mysql.jdbc.Driver
+        maxPoolSize: 50
+        idleTimeout: 60000
+        connectionTestQuery: SELECT 1
+        validationTimeout: 30000
+        isAutoCommit: false
+
+# Email Configurations
+siddhi:
+  refs:
+    -
+      ref:
+        name: 'email-sink'
+        type: 'email'
+        properties:
+          port: '465'
+          host: 'smtp.gmail.com'
+          ssl.enable: 'true'
+          auth: 'true'
+          ssl.enable: 'true'
+          address: 'wso2.stream.processor@gmail.com'
+          username: 'wso2.stream.processor'
+          password: '<password>'

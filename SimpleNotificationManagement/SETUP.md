@@ -29,7 +29,6 @@ Simple Notification Management Demo
     - Get the following jars from the KAFKA_HOME/libs directory
 
         kafka_2.11-2.0.1.jar
-        
         kafka-clients-2.0.1.jar
         
         metrics-core-2.2.0.jar

@@ -15,7 +15,7 @@ define stream ShipmentAndBuyerInfoSteam (orderId string, name string, address st
 	@map(type = 'json',
 		@attributes(orderId = 'trp:orderId', name = 'trp:name', address = 'trp:address', email = 'trp:email', shipmentType = 'trp:shipmentType', deliveryDate = "$.event.deliveryDate")))
 @sink(type = 'log')
-@sink(ref = 'email-sink', subject = 'Order {{orderId}} shipped', to = 'wso2streamprocessor@gmail.com', content.type = 'text/html',
+@sink(ref = 'email-sink', subject = 'Order {{orderId}} shipped', to = '{{email}}', content.type = 'text/html',
 	@map(type = 'text',
 		@payload("""
 			Hi {{name}}, <br/><br/>

@@ -32,6 +32,7 @@ siddhi:
           ssl.enable: 'true'
           auth: 'true'
           ssl.enable: 'true'
+          # User your gmail configurations here
           address: 'wso2.stream.processor@gmail.com'
           username: 'wso2.stream.processor'
           password: '<password>'

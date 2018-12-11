@@ -75,7 +75,7 @@ Expected output
 {"records":[["1234","John","23, Oxford Street, London, UK","your@email.com"]]}
 ```
 
-#### Test
+## Test
 
 Simulate the data to `ShipmentInfoStream` of the KafkaClient Application with following information: 
 
@@ -83,7 +83,7 @@ Simulate the data to `ShipmentInfoStream` of the KafkaClient Application with fo
 * buyerId : 1234
 * shipmentType : DHL
 
-#### Test Output 
+### Test Output 
 Log output 
 
 ```

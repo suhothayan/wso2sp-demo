@@ -11,49 +11,37 @@ Simple Notification Management Demo
  
     - Siddhi extensions
 
-        [siddhi-map-avro-1.0.6.jar](https://mvnrepository.com/artifact/org.wso2.extension.siddhi.map.avro/siddhi-map-avro/1.0.7)
-        
-        [siddhi-io-http-1.0.43.jar](http://central.maven.org/maven2/org/wso2/extension/siddhi/io/http/siddhi-io-http/1.0.43/siddhi-io-http-1.0.43.jar)
-        
-        [siddhi-map-xml-4.0.21.jar](http://central.maven.org/maven2/org/wso2/extension/siddhi/map/xml/siddhi-map-xml/4.0.21/siddhi-map-xml-4.0.21.jar)
-        
-        [siddhi-map-json-4.0.40.jar](http://central.maven.org/maven2/org/wso2/extension/siddhi/map/json/siddhi-map-json/4.0.40/siddhi-map-json-4.0.40.jar)
+        - [siddhi-map-avro-1.0.6.jar](https://mvnrepository.com/artifact/org.wso2.extension.siddhi.map.avro/siddhi-map-avro/1.0.7)
+        - [siddhi-io-http-1.0.43.jar](http://central.maven.org/maven2/org/wso2/extension/siddhi/io/http/siddhi-io-http/1.0.43/siddhi-io-http-1.0.43.jar)
+        - [siddhi-map-xml-4.0.21.jar](http://central.maven.org/maven2/org/wso2/extension/siddhi/map/xml/siddhi-map-xml/4.0.21/siddhi-map-xml-4.0.21.jar)
+        - [siddhi-map-json-4.0.40.jar](http://central.maven.org/maven2/org/wso2/extension/siddhi/map/json/siddhi-map-json/4.0.40/siddhi-map-json-4.0.40.jar)
 
     - Other dependent jars
     
-        [tapestry-json-5.4.1.wso2v1.jar](http://maven.wso2.org/nexus/content/repositories/releases/org/wso2/orbit/org/apache/tapestry/tapestry-json/5.4.1.wso2v1/tapestry-json-5.4.1.wso2v1.jar)
-        mysql-connector-java-8.0.13.jar : Download from the [MySQL site](https://dev.mysql.com/downloads/connector/j/) 
+        - [tapestry-json-5.4.1.wso2v1.jar](http://maven.wso2.org/nexus/content/repositories/releases/org/wso2/orbit/org/apache/tapestry/tapestry-json/5.4.1.wso2v1/tapestry-json-5.4.1.wso2v1.jar)
+        - mysql-connector-java-8.0.13.jar : Download from the [MySQL site](https://dev.mysql.com/downloads/connector/j/) 
 
 * Add Kafka dependencies 
 
     - Get the following jars from the KAFKA_HOME/libs directory
 
-        kafka_2.11-2.0.1.jar
-        kafka-clients-2.0.1.jar
-        
-        metrics-core-2.2.0.jar
-        
-        scala-library-2.11.12.jar
-        
-        zkclient-0.10.jar
-        
-        zookeeper-3.4.13.jar
+        - kafka_2.11-2.0.1.jar
+        - kafka-clients-2.0.1.jar
+        - metrics-core-2.2.0.jar
+        - scala-library-2.11.12.jar
+        - zkclient-0.10.jar
+        - zookeeper-3.4.13.jar
         
     - Convert the jars to OSGi bundles by following the steps given [here](https://wso2-extensions.github.io/siddhi-io-kafka/#how-to-use)
 
     - Add the converted jars to SP_HOME/lib
     
-        kafka_clients_2.0.1_1.0.0.jar
-        
-        metrics_core_2.2.0_1.0.0.jar
-        
-        zookeeper_3.4.13_1.0.0.jar
-        
-        zkclient_0.10_1.0.0.jar
-        
-        kafka_2.11_2.0.1_1.0.0.jar
-        
-        scala_library_2.11.12_1.0.0.jar
+        - kafka_clients_2.0.1_1.0.0.jar
+        - metrics_core_2.2.0_1.0.0.jar
+        - zookeeper_3.4.13_1.0.0.jar
+        - zkclient_0.10_1.0.0.jar
+        - kafka_2.11_2.0.1_1.0.0.jar
+        - scala_library_2.11.12_1.0.0.jar
 
 * Add DB and Email configuration given [here](deployment.yaml) to deployment.yaml files
 

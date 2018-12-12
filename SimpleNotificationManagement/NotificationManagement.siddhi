@@ -9,7 +9,7 @@ define stream ShipmentInfoStream (orderId string, buyerId string, shipmentType s
 @sink( type = 'http-request', publisher.url = 'http://localhost:8080/delivery-info/',
 	method = 'POST', headers = "'Content-Type:application/json'", sink.id = "delivery-info",
 	@map(type = 'json'))
-define stream ShipmentAndBuyerInfoSteam (orderId string, name string, address string, email string, shipmentType string);
+define stream ShipmentAndBuyerInfoStream (orderId string, name string, address string, email string, shipmentType string);
 
 @source(type = 'http-response', sink.id = 'delivery-info',
 	@map(type = 'json',
@@ -23,7 +23,7 @@ define stream ShipmentAndBuyerInfoSteam (orderId string, name string, address st
 			and it is expected to arrive at your doorstep on {{deliveryDate}}. <br/><br/>
 			For more information please contact sales. <br/><br/>
 			Thank you""")))
-define stream DeliveryInfoResponceStream (orderId string, name string, address string, email string, shipmentType string, deliveryDate string);
+define stream DeliveryInfoResponseStream (orderId string, name string, address string, email string, shipmentType string, deliveryDate string);
 
 @primaryKey('id')
 @store(type = 'rdbms', datasource = 'WSO2_TEST_DB')
@@ -33,4 +33,4 @@ define table BuyerInfoTable (id string, name string, address string, email strin
 from ShipmentInfoStream as s join BuyerInfoTable as b
  	on s.buyerId == b.id
 select s.orderId, b.name, b.address, b.email, s.shipmentType
-insert into ShipmentAndBuyerInfoSteam;
+insert into ShipmentAndBuyerInfoStream;

@@ -8,7 +8,7 @@ define stream DeliveryInfoService (messageId string, shipmentType string);
 @sink(type='http-response', source.id='delivery-info', message.id='{{messageId}}', headers="'content-type:json','content-length:94'",
     @map(type='json', @payload(""" { "event": { "deliveryDate":"{{deliveryDate}}"} } """)))
 @sink(type='log')
-define stream DeliveryInfoServiceResponce (messageId string, deliveryDate string);
+define stream DeliveryInfoServiceResponse (messageId string, deliveryDate string);
 
 @info(name='ProcessShipment')
 from DeliveryInfoService
@@ -16,4 +16,4 @@ select messageId,
     ifThenElse(shipmentType == 'DHL',
     time:dateAdd( time:currentDate(), 2,'DAY',"yyyy-MM-dd"),
     time:dateAdd( time:currentDate(), 7,'DAY',"yyyy-MM-dd")) as deliveryDate
-insert into DeliveryInfoServiceResponce;
+insert into DeliveryInfoServiceResponse;
